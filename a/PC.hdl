@@ -16,18 +16,15 @@ CHIP PC {
     OUT out[16];
 
     PARTS:
-    //Decide whether to reset, load, or inc; note that at most one will be true
-    Not(in=reset, out=notreset);
-    And(a=notreset, b=load, out=doload); //if reseting, can't load
-    Not(in=doload, out=notload);
-    And(a=notreset, b=notload, out=caninc); //if reseting or loading, can't inc
-    And(a=caninc, b=inc, out=doinc);
+    //Figure out what option to choose
+    Or(a=reset, b=load, out=loadorreset); //if reset or load is used, other options are overridden
+    Not(in=loadorreset, out=lastorinc);
+    And(a=lastorinc, b=inc, out=doinc); //only if neither reset or load is used is inc possible
+    Or(a=reset, b=doinc, out=incorreset);
 
-    //Get value to set
-    Or(a=doinc, b=reset, out=incorreset);
-    Or(a=doload, b=reset, out=loadorreset);
+    //Select between possible options
     Inc16(in=lastval, out=onemore);
-    Mux4Way16(a=lastval, b=in, c=onemore, d=false, sel[0]=loadorreset, sel[1]=incorreset, out=newval); //nothing, load, inc, reset
+    Mux4Way16(a=lastval, b=onemore, c=in, d=false, sel[1]=loadorreset, sel[0]=incorreset, out=newval); //nothing, load, inc, reset
 
     //Set register value if necessary, connect it to the output
     Register(in=newval, load=true, out=lastval); //lastval == out, but needs to be used internally
